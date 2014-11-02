@@ -1,10 +1,10 @@
-var sensor = require('ds18x20');
+var driver = require('ds18x20');
 function load (cb) {
-    sensor.isDriverLoaded(function (err, isLoaded) {
+    driver.isDriverLoaded(function (err, isLoaded) {
         if (isLoaded) {
             cb(null);
         } else {
-            sensor.loadDriver(function (err) {
+            driver.loadDriver(function (err) {
                 if (err) {
                     cb (err);
                 } else {
@@ -21,7 +21,7 @@ load(function(err) {
     if (err) {
         console.log ("Boot failed " + err);
     } else {
-        sensor.list(function (err, listOfDeviceIds) {
+        driver.list(function (err, listOfDeviceIds) {
             if (err) {
                 console.log ("failed to get list of devices");
             } else {
@@ -31,6 +31,8 @@ load(function(err) {
                     }
                 );
                 console.log("Using sensors " + sensors);
+                temps = driver.get(sensors);
+                console.log ("temps = " + temps);
             }
         });
     } 
