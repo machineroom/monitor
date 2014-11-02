@@ -1,0 +1,12 @@
+{
+	"name":"monitor",
+	"version":"0.0.1",
+	"author":"macihenroomfiddling@gmail.com",
+	"repository":{
+		"type":"git",
+		"url":"https://github.com/machineroom/monitor"
+	},
+	"dependencies":{
+		"ds18x20":"~0.1"
+	}
+}
