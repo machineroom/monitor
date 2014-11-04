@@ -1,4 +1,9 @@
-var driver = require('ds18x20');
+var driver = require('ds18x20'),
+    aws = require ('aws-sdk');
+
+aws.config.region = 'us-west-2';
+var dynamo = new aws.DynamoDB();
+    
 function load (cb) {
     driver.isDriverLoaded(function (err, isLoaded) {
         if (isLoaded) {
@@ -12,6 +17,24 @@ function load (cb) {
                 }
             });
         }
+    });
+}
+
+function store (sensors, temps) {
+    var date = Date.now();
+    var params = {};
+    params.TableName = 'readings';
+    params.Item = {};
+    params.Item.date = {
+        'N' : date.toString()
+    };
+    temps.forEach (function (temp, index) {
+        params.Item[sensors[index]] = {
+            'N' : temps[index].toString()
+        };
+    });
+    dynamo.putItem (params, function (err, data) {
+        if (err) console.log (err);
     });
 }
 
@@ -33,6 +56,7 @@ load(function(err) {
                 console.log("Using sensors " + sensors);
                 temps = driver.get(sensors);
                 console.log ("temps = " + temps);
+                store (sensors, temps);                
             }
         });
     } 
