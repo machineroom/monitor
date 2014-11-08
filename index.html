@@ -43,7 +43,31 @@
             });
             var dynamo = new AWS.DynamoDB();
             params = {};
+            var now = Date.now();
+            var then = now - 2 * 60 * 1000; //2 mins
             params.TableName = "readings";
+            params.Select = "ALL_ATTRIBUTES";
+            params.KeyConditions = {
+                "date" : {
+                    "AttributeValueList" : [
+                        {"N":then.toString()},
+                        {"N":now.toString()}
+                    ],
+                    "ComparisonOperator" : "BETWEEN"
+                }
+            }
+            dynamo.query (params, function (err, data) {
+                console.log (err);
+                console.log (data);
+                data.Items.forEach(function(row) {
+                    console.log (new Date(parseInt(row.date.N)).toUTCString());
+                    sensors = Object.keys(row);
+                    sensors.forEach(function (sensor) {
+                        console.log ("sensor " + sensor + " = " + row[sensor].N);
+                    });
+                });
+            });
+            /*
             params.Limit = 10;
             dynamo.scan (params, function (err, data) {
                 console.log (err);
@@ -56,6 +80,7 @@
                     });
                 });
             });
+            */
         }
         
         function statusChangeCallback(response) {
