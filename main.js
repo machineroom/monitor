@@ -30,6 +30,9 @@ function store (date, sensors, temps, fini) {
     params.Item.date = {
         'N' : date.toString()
     };
+    params.Item.order = {
+        'N' : date.toString()
+    };
     temps.forEach (function (temp, index) {
         params.Item[sensors[index]] = {
             'N' : temps[index].toString()
