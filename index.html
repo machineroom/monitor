@@ -42,9 +42,19 @@
                 WebIdentityToken: FBresponse.authResponse.accessToken
             });
             var dynamo = new AWS.DynamoDB();
-            dynamo.listTables (function (err, data) {
+            params = {};
+            params.TableName = "readings";
+            params.Limit = 10;
+            dynamo.scan (params, function (err, data) {
                 console.log (err);
                 console.log (data);
+                data.Items.forEach(function(row) {
+                    console.log (new Date(parseInt(row.date.N)).toUTCString());
+                    sensors = Object.keys(row);
+                    sensors.forEach(function (sensor) {
+                        console.log ("sensor " + sensor + " = " + row[sensor].N);
+                    });
+                });
             });
         }
         
