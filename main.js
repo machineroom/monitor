@@ -3,7 +3,7 @@ var driver = require('ds18x20'),
     async = require ('async');
 
 aws.config.region = 'us-west-2';
-var period = 60;
+var period = 20;
 var period_ms = period * 1000;
 var dynamo = new aws.DynamoDB();
     

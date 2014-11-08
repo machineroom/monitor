@@ -44,7 +44,7 @@
             var dynamo = new AWS.DynamoDB();
             params = {};
             var now = Date.now();
-            var then = now - 200 * 60 * 1000; //2 mins
+            var then = now - 20 * 60 * 1000; //20 mins
             params.TableName = "readings";
             params.ScanFilter = {
                 "order" : {
@@ -56,15 +56,21 @@
                 }
             };
             dynamo.scan (params, function (err, data) {
-                console.log (err);
-                console.log (data);
-                var time_ordered = data.Items.sort(function(a,b) {return parseInt(a.date.N) - parseInt(b.date.N);});
+                console.log ("dynamo returned " + data.Count + " items");
+                var time_ordered = data.Items.sort(function(a,b) {
+                    return parseInt(a.date.N) - parseInt(b.date.N);
+                });
                 time_ordered.forEach(function(row) {
-                    console.log (new Date(parseInt(row.date.N)).toUTCString());
-                    sensors = Object.keys(row);
-                    sensors.forEach(function (sensor) {
-                        //console.log ("sensor " + sensor + " = " + row[sensor].N);
+                    var reading = "";
+                    reading += new Date(parseInt(row.date.N)).toUTCString() + " ";
+                    sensors = Object.keys(row).filter(function(el) {
+                        // filter out keys that aren't sensors
+                        return el != "date" && el != "range";
                     });
+                    sensors.forEach(function (sensor) {
+                        reading += sensor + " = " + row[sensor].N + ", ";
+                    });
+                    console.log (reading);
                 });
             });
         }
