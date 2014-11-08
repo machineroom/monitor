@@ -1,7 +1,10 @@
 var driver = require('ds18x20'),
-    aws = require ('aws-sdk');
+    aws = require ('aws-sdk'),
+    async = require ('async');
 
 aws.config.region = 'us-west-2';
+var period = 60;
+var period_ms = period * 1000;
 var dynamo = new aws.DynamoDB();
     
 function load (cb) {
@@ -20,8 +23,7 @@ function load (cb) {
     });
 }
 
-function store (sensors, temps) {
-    var date = Date.now();
+function store (date, sensors, temps, fini) {
     var params = {};
     params.TableName = 'readings';
     params.Item = {};
@@ -35,6 +37,7 @@ function store (sensors, temps) {
     });
     dynamo.putItem (params, function (err, data) {
         if (err) console.log (err);
+        fini();
     });
 }
 
@@ -54,9 +57,23 @@ load(function(err) {
                     }
                 );
                 console.log("Using sensors " + sensors);
-                temps = driver.get(sensors);
-                console.log ("temps = " + temps);
-                store (sensors, temps);                
+                async.forever (function(next) {
+                    var start = Date.now();
+                    temps = driver.get(sensors);
+                    console.log ("temps = " + temps);
+                    store (start, sensors, temps, function() {
+                        var end = Date.now();
+                        elapsed = end - start;
+                        console.log ("reading took " + elapsed + "ms");
+                        delay = period_ms - elapsed;
+                        if (delay < 0) {
+                            delay = 0;
+                        }
+                        setTimeout (next, delay);
+                    });
+                },
+                function (err) {
+                });
             }
         });
     } 
