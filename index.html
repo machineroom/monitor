@@ -3,6 +3,8 @@
 <head>
     <title>Monitoring</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.0.25.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js"></script>
 </head>
 
 <body>
@@ -60,18 +62,44 @@
                 var time_ordered = data.Items.sort(function(a,b) {
                     return parseInt(a.date.N) - parseInt(b.date.N);
                 });
-                time_ordered.forEach(function(row) {
+                var sensors = Object.keys(time_ordered[0]).filter(function(el) {
+                    // filter out keys that aren't sensors
+                    return el != "date" && el != "order";
+                });
+                var data = {};
+                data.labels = [];
+                var times = [];
+                time_ordered.forEach (function (el) {
+                    times.push (parseInt(el.date.N));
+                    data.labels.push (new Date(parseInt(el.date.N)).getMinutes());
+                });
+                
+                data.datasets = [];
+                sensors.forEach (function(el,i) {
+                    data.datasets.push ({
+                        label: el,
+                        fillColor: "rgba(220,220,220,0.2)",
+                        strokeColor: "rgba(220,220,220,1)",
+                        pointColor: "rgba(220,220,220,1)",
+                        pointStrokeColor: "#fff",
+                        pointHighlightFill: "#fff",
+                        pointHighlightStroke: "rgba(220,220,220,1)",
+                        data: []
+                    });
+                });
+                time_ordered.forEach(function(row, row_index) {
                     var reading = "";
                     reading += new Date(parseInt(row.date.N)).toUTCString() + " ";
-                    sensors = Object.keys(row).filter(function(el) {
-                        // filter out keys that aren't sensors
-                        return el != "date" && el != "range";
-                    });
-                    sensors.forEach(function (sensor) {
+                    sensors.forEach(function (sensor,sensor_index) {
                         reading += sensor + " = " + row[sensor].N + ", ";
+                        data.datasets[sensor_index].data.push (parseInt(row[sensor].N));
                     });
                     console.log (reading);
                 });
+                Chart.defaults.global.animation = false;
+                var ctx = $("#chart").get(0).getContext("2d");
+                var options = {};
+                var myLineChart = new Chart(ctx).Line(data, options);
             });
         }
         
@@ -102,10 +130,11 @@
             });
         }        
 
-
     </script>
     <fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
     </fb:login-button>
     <div id="status"></div>
+    <canvas id="chart" width="1000" height="500"></canvas>
+
 </body>
 </html>
