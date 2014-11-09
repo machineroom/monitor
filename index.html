@@ -5,6 +5,7 @@
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.0.25.min.js"></script>
     <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
     <script src="https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js"></script>
+    <script src="https://raw.githubusercontent.com/caolan/async/master/lib/async.js"></script>
 </head>
 
 <body>
@@ -12,6 +13,7 @@
         var appId = '263456520445253';
         var roleArn = 'arn:aws:iam::381367247925:role/fbaccess';
         var fbUserId;
+        var config = [];    // for each sensor
             
         //called by FB SDK script
         window.fbAsyncInit = function () {
@@ -21,7 +23,6 @@
                 xfbml      : true,
                 version    : 'v2.1'
             });
-
         };
 
         // Load the Facebook SDK asynchronously
@@ -36,17 +37,36 @@
             fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
 
-        function do_aws_stuff(FBresponse) {
+        function do_aws_stuff(FBresponse, callback) {
             AWS.config.region = 'us-west-2';
             AWS.config.credentials = new AWS.WebIdentityCredentials({
                 ProviderId: 'graph.facebook.com',
                 RoleArn: roleArn,
                 WebIdentityToken: FBresponse.authResponse.accessToken
             });
+            callback (null);
+        }
+
+        function read_config(callback) {
+            var dynamo = new AWS.DynamoDB();
+            params = {};
+            params.TableName = "config";
+            dynamo.scan (params, function (err, data) {
+                data.Items.forEach(function(item, idx) {
+                    config[item.sensor.S] = {
+                        name : item.name.S,
+                        color : item.color.S
+                    }
+                });
+                callback (err);
+            });
+        }
+        
+        function read(callback) {
             var dynamo = new AWS.DynamoDB();
             params = {};
             var now = Date.now();
-            var then = now - 20 * 60 * 1000; //20 mins
+            var then = now - 60 * 60 * 1000; //60 mins
             params.TableName = "readings";
             params.ScanFilter = {
                 "order" : {
@@ -77,10 +97,10 @@
                 data.datasets = [];
                 sensors.forEach (function(el,i) {
                     data.datasets.push ({
-                        label: el,
+                        label: config[el].name,
                         fillColor: "rgba(220,220,220,0.2)",
-                        strokeColor: "rgba(220,220,220,1)",
-                        pointColor: "rgba(220,220,220,1)",
+                        strokeColor: config[el].color,
+                        pointColor: config[el].color,
                         pointStrokeColor: "#fff",
                         pointHighlightFill: "#fff",
                         pointHighlightStroke: "rgba(220,220,220,1)",
@@ -92,7 +112,9 @@
                     reading += new Date(parseInt(row.date.N)).toUTCString() + " ";
                     sensors.forEach(function (sensor,sensor_index) {
                         reading += sensor + " = " + row[sensor].N + ", ";
-                        data.datasets[sensor_index].data.push (parseInt(row[sensor].N));
+                        if (parseInt(row[sensor].N) !== 85) {
+                            data.datasets[sensor_index].data.push (parseInt(row[sensor].N));
+                        }
                     });
                     console.log (reading);
                 });
@@ -100,7 +122,22 @@
                 var ctx = $("#chart").get(0).getContext("2d");
                 var options = {};
                 var myLineChart = new Chart(ctx).Line(data, options);
+                callback(err);
             });
+        }
+        
+        function boot(FBresponse) {
+            async.waterfall (
+                [
+                    function (cb) {
+                        do_aws_stuff(FBresponse, cb)
+                    },
+                    read_config,
+                    read
+                ],
+                function (err, result) {
+                }
+            );
         }
         
         function statusChangeCallback(response) {
@@ -112,7 +149,7 @@
                 // Logged into your app and Facebook.
                 fbUserId = response.authResponse.userID;
                 console.log ("FB user is " + fbUserId);
-                do_aws_stuff(response);
+                boot (response);
             } else if (response.status === 'not_authorized') {
               // The person is logged into Facebook, but not your app.
               document.getElementById('status').innerHTML = 'Please log ' +
