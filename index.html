@@ -81,9 +81,9 @@
                     "ComparisonOperator" : "BETWEEN"
                 }
             };
-            dynamo.scan (params, function (err, data) {
-                console.log ("dynamo returned " + data.Count + " items");
-                var time_ordered = data.Items.sort(function(a,b) {
+            dynamo.scan (params, function (err, dynamoResponse) {
+                console.log ("dynamo returned " + dynamoResponse.Count + " items");
+                var time_ordered = dynamoResponse.Items.sort(function(a,b) {
                     return parseInt(a.date.N) - parseInt(b.date.N);
                 });
                 var sensors = Object.keys(time_ordered[0]).filter(function(el) {
@@ -112,17 +112,19 @@
                     });
                 });
                 time_ordered.forEach(function(row, row_index) {
-                    var reading = "";
-                    reading += new Date(parseInt(row.date.N)).toUTCString() + " ";
+                    //var reading = "";
+                    //reading += new Date(parseInt(row.date.N)).toUTCString() + " ";
                     sensors.forEach(function (sensor,sensor_index) {
-                        reading += sensor + " = " + row[sensor].N + ", ";
+                        //reading += sensor + " = " + row[sensor].N + ", ";
                         if (parseInt(row[sensor].N) !== 85) {
                             data.datasets[sensor_index].data.push (parseInt(row[sensor].N));
                         }
                     });
-                    console.log (reading);
+                    //console.log (reading);
                 });
                 Chart.defaults.global.animation = false;
+                Chart.defaults.global.showTooltips = false;
+                Chart.defaults.global.responsive = true;
                 var ctx = $("#chart").get(0).getContext("2d");
                 var options = {};
                 var myLineChart = new Chart(ctx).Line(data, options);
